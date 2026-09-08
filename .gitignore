@@ -39,3 +39,8 @@ next-env.d.ts
 
 !.env.example
 *.tsbuildinfo
+
+.data/
+backups/
+
+.docker-admin-credentials.txt

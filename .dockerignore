@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.env*
+!.env.example
+.wrangler
+.vinext
+.next
+*.tsbuildinfo
+*.tar.gz
+.data
+backups
+tests
+
+.docker-admin-credentials.txt

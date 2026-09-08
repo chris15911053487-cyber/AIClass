@@ -25,6 +25,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Course, Lesson, Skill, Resource, Settings } from '@/lib/types';
 import { safeReturnTo } from '@/lib/evaluate';
 type Data = {
+  adminAuth: "password" | "chatgpt";
   courses: Course[];
   skills: Skill[];
   resources: Resource[];
@@ -1146,7 +1147,7 @@ function MyLearning({
               </>
             )}
             <div style={{ marginTop: 20 }}>
-              {me.user.admin ? (
+              {me.user.admin && data.adminAuth !== "password" ? (
                 <a
                   className="button"
                   target="_top"
@@ -1204,6 +1205,25 @@ function Admin({
       })
       .catch((e) => setMsg(e.message));
   }, [me?.user?.admin]);
+  if (me?.user?.admin && !loaded)
+    return (
+      <>
+        <Heading
+          eyebrow="CONTENT STUDIO"
+          title="正在准备内容工作室"
+          subtitle="正在读取课程、练习、Skills 和学员作业。"
+        />
+        <div className="empty">
+          <RefreshCw size={30} style={{ margin: 'auto' }} />
+          <p>{msg || '管理员数据加载中…'}</p>
+          {msg && (
+            <button className="button" onClick={() => location.reload()}>
+              重新加载
+            </button>
+          )}
+        </div>
+      </>
+    );
   const course = draft.courses.find((c) => c.id === selected);
   const lesson = course?.lessons[lessonIndex];
   function updateCourse(p: Partial<Course>) {
@@ -1281,13 +1301,11 @@ function Admin({
         <div className="empty">
           <Lock size={30} style={{ margin: 'auto' }} />
           <p>此页面仅对站点所有者开放。学员账号没有管理权限。</p>
-          <a
+          {data.adminAuth === 'password' ? <AdminLogin /> : <a
             className="button dark"
             href="/signin-with-chatgpt?return_to=%2Fadmin"
             target="_top"
-          >
-            使用老师账号登录 <ArrowRight size={17} />
-          </a>
+          >使用老师账号登录 <ArrowRight size={17} /></a>}
         </div>
       </>
     );
@@ -1813,7 +1831,7 @@ function Admin({
               ))}
               <div className="notice">
                 短信服务需要配置签名、模板和服务密钥；AI
-                问答需要配置模型服务。密钥在托管设置中管理，不会保存在课程内容里。
+                问答需要配置模型服务。密钥在部署环境中配置，不会保存在课程内容里。
               </div>
             </div>
           </TabsContent>
@@ -1884,4 +1902,17 @@ function Review({ s }: { s: Submission }) {
       {msg && <div className="notice">{msg}</div>}
     </div>
   );
+}
+
+function AdminLogin() {
+  const [username,setUsername]=useState('admin');
+  const [password,setPassword]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  return <form style={{maxWidth:360,margin:'20px auto',textAlign:'left'}} onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{await api('admin-login',{username,password});location.reload()}catch(e){setError((e as Error).message)}finally{setBusy(false)}}}>
+    <label className="field">管理员账号<input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} required/></label>
+    <label className="field">管理员密码<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>
+    <button className="button dark" disabled={busy}>{busy?'正在登录…':'登录管理后台'}</button>
+    {error&&<div className="notice error" role="alert">{error}</div>}
+  </form>;
 }

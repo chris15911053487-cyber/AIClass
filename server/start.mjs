@@ -1,0 +1,11 @@
+import { openDatabase, migrate } from './sqlite.mjs';
+import { resolve } from 'node:path';
+const required = ['APP_ORIGIN', 'ADMIN_USERNAME', 'ADMIN_PASSWORD_HASH'];
+for (const key of required) if (!process.env[key]) throw new Error('Missing required environment variable: ' + key);
+const origin = new URL(process.env.APP_ORIGIN);
+if (!['https:', 'http:'].includes(origin.protocol) || origin.origin !== process.env.APP_ORIGIN) throw new Error('APP_ORIGIN must be a complete origin without a trailing slash');
+if (!/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(process.env.ADMIN_PASSWORD_HASH)) throw new Error('Invalid ADMIN_PASSWORD_HASH; run npm run docker:configure');
+const connection = openDatabase(process.env.DATABASE_PATH || '/data/academy.sqlite');
+migrate(connection, resolve('drizzle'));
+connection.close();
+await import('../dist/standalone/server.js');

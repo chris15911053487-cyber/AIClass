@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:workers';
+import { env } from '@academy/runtime';
 import { cookies } from 'next/headers';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { seedCourses, seedSkills, seedResources, seedSettings } from './seed';
@@ -23,6 +23,12 @@ export type User = {
 };
 export async function getUser(): Promise<User | null> {
   const token = (await cookies()).get('academy_session')?.value;
+  if (token && config().DEPLOYMENT_TARGET === 'docker') {
+    const session = await db().prepare('SELECT user_id FROM sessions WHERE hash=? AND expires>?').bind(await sha(token), Date.now()).first<{user_id:string}>();
+    if (session && config().ADMIN_PASSWORD_HASH && session.user_id === 'admin:' + await sha(config().ADMIN_PASSWORD_HASH)) {
+      return { id: session.user_id, name: config().ADMIN_USERNAME, phone: '', admin: true };
+    }
+  }
   if (token) {
     const row = await db()
       .prepare(
@@ -32,6 +38,7 @@ export async function getUser(): Promise<User | null> {
       .first<{ id: string; name: string; phone: string }>();
     if (row) return { ...row, admin: false };
   }
+  if (config().DEPLOYMENT_TARGET === 'docker') return null;
   const owner = await getChatGPTUser();
   const email = config().ADMIN_EMAIL;
   if (owner && email && owner.email.toLowerCase() === email.toLowerCase())

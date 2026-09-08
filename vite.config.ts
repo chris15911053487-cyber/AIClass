@@ -1,4 +1,5 @@
 import { sites } from '@openai/sites-vite-plugin';
+import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
 import { defineConfig, loadEnv } from 'vite';
@@ -35,6 +36,17 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async ({ command }) => {
+  if (process.env.DEPLOYMENT_TARGET === 'docker') {
+    return {
+      css: { postcss: { plugins: [tailwindcss()] } },
+      resolve: { alias: [
+        { find: '@academy/runtime', replacement: fileURLToPath(new URL('./lib/runtime-docker.ts', import.meta.url)) },
+        { find: '@academy/admin-password', replacement: fileURLToPath(new URL('./server/password.mjs', import.meta.url)) },
+      ] },
+      plugins: [vinext()],
+    };
+  }
+
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= 'false';
@@ -45,6 +57,10 @@ export default defineConfig(async ({ command }) => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    resolve: { alias: [
+      { find: '@academy/runtime', replacement: fileURLToPath(new URL('./lib/runtime.ts', import.meta.url)) },
+      { find: '@academy/admin-password', replacement: fileURLToPath(new URL('./lib/admin-password.ts', import.meta.url)) },
+    ] },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }

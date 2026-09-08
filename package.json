@@ -11,7 +11,11 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "build:docker": "DEPLOYMENT_TARGET=docker vinext build",
+    "start:docker": "node server/start.mjs",
+    "docker:configure": "node server/configure.mjs",
+    "test:docker": "node --test tests/docker.test.mjs"
   },
   "dependencies": {
     "react": "19.2.6",

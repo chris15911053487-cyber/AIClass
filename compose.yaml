@@ -1,0 +1,32 @@
+services:
+  academy:
+    build: .
+    image: ai-practice-academy:local
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-3000}:3000"
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Run docker configuration first}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?Administrator username required}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?Administrator password hash required}
+      OTP_SECRET: ${OTP_SECRET:?OTP secret required}
+      ALIYUN_ACCESS_KEY_ID: ${ALIYUN_ACCESS_KEY_ID:-}
+      ALIYUN_ACCESS_KEY_SECRET: ${ALIYUN_ACCESS_KEY_SECRET:-}
+      SMS_SIGN_NAME: ${SMS_SIGN_NAME:-}
+      SMS_TEMPLATE_CODE: ${SMS_TEMPLATE_CODE:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+    volumes:
+      - academy_data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  academy_data:

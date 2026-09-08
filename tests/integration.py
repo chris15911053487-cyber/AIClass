@@ -1,7 +1,7 @@
 """Run against local development only; creates and removes two isolated local fixtures."""
-import sqlite3, pathlib, hashlib, secrets, time, json, urllib.request, urllib.error
+import sqlite3, pathlib, hashlib, secrets, time, json, urllib.request, urllib.error, os
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-DB=next(p for p in (ROOT/'.wrangler/state/v3/d1/miniflare-D1DatabaseObject').glob('*.sqlite') if p.name!='metadata.sqlite')
+DB=pathlib.Path(os.environ['ACADEMY_SQLITE_FILE']) if os.environ.get('ACADEMY_SQLITE_FILE') else next(p for p in (ROOT/'.wrangler/state/v3/d1/miniflare-D1DatabaseObject').glob('*.sqlite') if p.name!='metadata.sqlite')
 conn=sqlite3.connect(DB); now=int(time.time()*1000)
 users=[('test-student-a','19900000001',secrets.token_hex(32)),('test-student-b','19900000002',secrets.token_hex(32))]
 for uid,phone,token in users:

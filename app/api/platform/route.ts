@@ -1,3 +1,4 @@
+import { verifyPassword } from '@academy/admin-password';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import {
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
         skills: c.skills
           .filter((s) => s.enabled)
           .map(({ instructions, ...s }) => s),
+        adminAuth: config().DEPLOYMENT_TARGET === 'docker' ? 'password' : 'chatgpt',
         smsReady: smsReady(),
         aiReady: aiReady(),
       });
@@ -88,6 +90,7 @@ export async function GET(request: Request) {
         draft: draft.value,
         revision: draft.revision,
         submissions: review.results,
+        adminAuth: config().DEPLOYMENT_TARGET === 'docker' ? 'password' : 'chatgpt',
         smsReady: smsReady(),
         aiReady: aiReady(),
       });
@@ -100,7 +103,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const origin = request.headers.get('origin');
-    if (!origin || origin !== new URL(request.url).origin)
+    if (!origin || origin !== (config().APP_ORIGIN || new URL(request.url).origin))
       return json({ error: '请求来源无效' }, 403);
     if (!request.headers.get('content-type')?.includes('application/json'))
       return json({ error: '请求格式不正确' }, 415);
@@ -108,6 +111,17 @@ export async function POST(request: Request) {
     if (raw.length > 900000) return json({ error: '提交内容过大' }, 413);
     const b = JSON.parse(raw);
     const op = b.op;
+    if (op === 'admin-login') {
+      if (config().DEPLOYMENT_TARGET !== 'docker') return json({error:'此部署使用老师账号登录'},400);
+      await throttle('admin-login-global', 15, 900000);
+      const valid = typeof b.password === 'string' && await verifyPassword(b.password, config().ADMIN_PASSWORD_HASH);
+      if (!valid || b.username !== config().ADMIN_USERNAME) return json({error:'账号或密码不正确，请稍后重试。'},401);
+      const token = crypto.randomUUID() + crypto.randomUUID();
+      await db().prepare('INSERT INTO sessions(hash,user_id,expires) VALUES(?,?,?)').bind(await sha(token), 'admin:' + await sha(config().ADMIN_PASSWORD_HASH), Date.now()+28800000).run();
+      (await cookies()).set('academy_session', token, {httpOnly:true,secure:new URL(config().APP_ORIGIN).protocol==='https:',sameSite:'lax',path:'/',maxAge:28800});
+      return json({ok:true});
+    }
+
     if (op === 'send-code') {
       if (!smsReady())
         return json(
@@ -119,7 +133,7 @@ export async function POST(request: Request) {
         );
       if (typeof b.phone !== 'string' || !validPhone(b.phone))
         return json({ error: '请输入正确的中国大陆手机号' }, 400);
-      const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+      const ip = config().DEPLOYMENT_TARGET === 'docker' ? 'self-hosted' : request.headers.get('cf-connecting-ip') || 'unknown';
       await throttle('sms-ip:' + (await sha(ip)), 10, 3600000);
       await throttle('sms-phone-day:' + b.phone, 8, 86400000);
       const now = Date.now();
@@ -164,7 +178,7 @@ export async function POST(request: Request) {
         return json({ error: '请填写手机号和六位验证码' }, 400);
       await throttle(
         'verify:' +
-          (await sha(request.headers.get('cf-connecting-ip') || 'unknown')),
+          (await sha(config().DEPLOYMENT_TARGET === 'docker' ? 'self-hosted' : request.headers.get('cf-connecting-ip') || 'unknown')),
         40,
         3600000,
       );
@@ -207,7 +221,7 @@ export async function POST(request: Request) {
         .run();
       (await cookies()).set('academy_session', token, {
         httpOnly: true,
-        secure: new URL(request.url).protocol === 'https:',
+        secure: new URL(config().APP_ORIGIN || request.url).protocol === 'https:',
         sameSite: 'lax',
         path: '/',
         maxAge: 604800,
