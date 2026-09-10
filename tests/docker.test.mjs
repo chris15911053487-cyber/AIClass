@@ -18,7 +18,7 @@ test('SQLite adapter persists writes, isolates user queries and rolls back a fai
 test('administrator password hashes reject incorrect passwords and malformed input',async()=>{
  const password='a-random-testing-password-1234';const hash=await hashPassword(password);assert.ok(!hash.includes(password));assert.equal(await verifyPassword(password,hash),true);assert.equal(await verifyPassword('incorrect',hash),false);assert.equal(await verifyPassword(password,'bad'),false);await assert.rejects(hashPassword('short'));
 });
-test('Docker configuration defaults to the canonical 127.0.0.1:8080 origin and port',()=>{
+test('Docker configuration defaults to the canonical 127.0.0.1:8060 origin and port',()=>{
  const dir=mkdtempSync(join(tmpdir(),'academy-config-'));
- try{const run=spawnSync(process.execPath,[resolve('server/configure.mjs'),'--defaults'],{cwd:dir,encoding:'utf8'});assert.equal(run.status,0,run.stderr);const env=readFileSync(join(dir,'.env.docker'),'utf8');assert.match(env,/^APP_ORIGIN=http:\/\/127\.0\.0\.1:8080$/m);assert.match(env,/^PORT=8080$/m)}finally{rmSync(dir,{recursive:true,force:true})}
+ try{const run=spawnSync(process.execPath,[resolve('server/configure.mjs'),'--defaults'],{cwd:dir,encoding:'utf8'});assert.equal(run.status,0,run.stderr);const env=readFileSync(join(dir,'.env.docker'),'utf8');assert.match(env,/^APP_ORIGIN=http:\/\/127\.0\.0\.1:8060$/m);assert.match(env,/^PORT=8060$/m)}finally{rmSync(dir,{recursive:true,force:true})}
 });
