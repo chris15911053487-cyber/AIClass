@@ -1,7 +1,7 @@
 """Test the configured local Docker/Node instance without revealing credentials."""
 import os,json,re,urllib.request,urllib.error
 from pathlib import Path
-base=os.environ.get('ACADEMY_TEST_ORIGIN','http://127.0.0.1:3000')
+base=os.environ.get('ACADEMY_TEST_ORIGIN','http://127.0.0.1:8080')
 secret=Path('.docker-admin-credentials.txt').read_text()
 password=re.search(r'初始密码：([^\s]+)',secret).group(1)
 def request(op='catalog',body=None,cookie=None,headers=None):

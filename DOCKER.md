@@ -20,7 +20,7 @@ npm run docker:configure
 docker run --rm -it -v "$PWD:/workspace" -w /workspace node:24-bookworm-slim node server/configure.mjs
 ```
 
-按提示输入访问地址（本机默认 `http://127.0.0.1:3000`）和管理员账号。脚本生成 `.env.docker`，并显示一次随机初始密码，请保存。它不会覆盖已有配置。配置文件中的管理员密码仅以 scrypt 散列保存。
+按提示输入访问地址（本机默认 `http://127.0.0.1:8080`）和管理员账号。脚本生成 `.env.docker`，并显示一次随机初始密码，请保存。它不会覆盖已有配置。配置文件中的管理员密码仅以 scrypt 散列保存。
 
 ### 2. 构建与启动
 
@@ -29,7 +29,7 @@ docker compose --env-file .env.docker up -d --build
 docker compose --env-file .env.docker ps
 ```
 
-默认首页：<http://127.0.0.1:3000>。后台：<http://127.0.0.1:3000/admin>。
+默认首页：<http://127.0.0.1:8080>。后台：<http://127.0.0.1:8080/admin>。
 
 首次启动自动执行数据库迁移，随后启动正式 Node 服务。健康检查通过后，状态显示 healthy。
 
@@ -40,16 +40,16 @@ docker compose --env-file .env.docker ps
 ```dotenv
 APP_ORIGIN=https://learn.example.com
 BIND_ADDRESS=127.0.0.1
-PORT=3000
+PORT=8080
 ```
 
 APP_ORIGIN 必须与浏览器实际使用的协议、域名和端口完全一致，不包含路径或尾部 `/`，用于请求来源验证和安全 Cookie。
 
-建议让服务器已有的 Nginx/Caddy 在 HTTPS 域名下代理到 `127.0.0.1:3000`。例如已有 Caddy 可添加：
+建议让服务器已有的 Nginx/Caddy 在 HTTPS 域名下代理到 `127.0.0.1:8080`。例如已有 Caddy 可添加：
 
 ```caddy
 learn.example.com {
-    reverse_proxy 127.0.0.1:3000
+    reverse_proxy 127.0.0.1:8080
 }
 ```
 
