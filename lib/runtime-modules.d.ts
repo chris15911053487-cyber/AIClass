@@ -3,4 +3,5 @@ declare module '@academy/runtime' {
 }
 declare module '@academy/admin-password' {
   export function verifyPassword(password: string, encoded: string): Promise<boolean>;
+  export function hashPassword(password: string, minLength?: number): Promise<string>;
 }

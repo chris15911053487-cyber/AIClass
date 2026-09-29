@@ -1,0 +1,1 @@
+ALTER TABLE `students` ADD `password_hash` text DEFAULT '' NOT NULL;

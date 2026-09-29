@@ -2,8 +2,8 @@ import { scrypt as scryptCallback, randomBytes, timingSafeEqual } from 'node:cry
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 const scrypt = promisify(scryptCallback);
-export async function hashPassword(password) {
-  if (password.length < 12 || password.length > 256) throw new Error('Administrator password must contain 12–256 characters');
+export async function hashPassword(password, minLength = 12) {
+  if (password.length < minLength || password.length > 256) throw new Error('Password must contain ' + minLength + '–256 characters');
   const salt = randomBytes(16).toString('hex');
   const digest = await scrypt(password, salt, 64, { N: 32768, maxmem: 67108864 });
   return `scrypt:${salt}:${digest.toString('hex')}`;

@@ -1,4 +1,4 @@
-import { verifyPassword } from '@academy/admin-password';
+import { verifyPassword, hashPassword } from '@academy/admin-password';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import {
@@ -120,6 +120,80 @@ export async function POST(request: Request) {
       await db().prepare('INSERT INTO sessions(hash,user_id,expires) VALUES(?,?,?)').bind(await sha(token), 'admin:' + await sha(config().ADMIN_PASSWORD_HASH), Date.now()+28800000).run();
       (await cookies()).set('academy_session', token, {httpOnly:true,secure:new URL(config().APP_ORIGIN).protocol==='https:',sameSite:'lax',path:'/',maxAge:28800});
       return json({ok:true});
+    }
+
+    if (op === 'register' || op === 'login') {
+      if (config().DEPLOYMENT_TARGET !== 'docker')
+        return json({ error: '此部署使用短信验证码登录' }, 400);
+      if (typeof b.phone !== 'string' || !validPhone(b.phone))
+        return json({ error: '请输入正确的中国大陆手机号' }, 400);
+      if (
+        typeof b.password !== 'string' ||
+        b.password.length < 6 ||
+        b.password.length > 64
+      )
+        return json({ error: '密码需为 6–64 位字符' }, 400);
+      const ip =
+        config().DEPLOYMENT_TARGET === 'docker'
+          ? 'self-hosted'
+          : request.headers.get('cf-connecting-ip') || 'unknown';
+      await throttle('pwd-auth:' + (await sha(ip)), 40, 3600000);
+
+      if (op === 'register') {
+        const passwordHash = await hashPassword(b.password, 6);
+        const created = await db()
+          .prepare(
+            'INSERT OR IGNORE INTO students(id,phone,name,goal,password_hash,created_at) VALUES(?,?,?,?,?,?) RETURNING id',
+          )
+          .bind(
+            crypto.randomUUID(),
+            b.phone,
+            '学员' + b.phone.slice(-4),
+            '',
+            passwordHash,
+            Date.now(),
+          )
+          .first<{ id: string }>();
+        if (!created)
+          return json({ error: '该手机号已注册，请直接登录。' }, 409);
+        const token = crypto.randomUUID() + crypto.randomUUID();
+        await db()
+          .prepare('INSERT INTO sessions(hash,user_id,expires) VALUES(?,?,?)')
+          .bind(await sha(token), created.id, Date.now() + 604800000)
+          .run();
+        (await cookies()).set('academy_session', token, {
+          httpOnly: true,
+          secure: new URL(config().APP_ORIGIN || request.url).protocol === 'https:',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 604800,
+        });
+        return json({ ok: true });
+      }
+
+      const u = await db()
+        .prepare('SELECT id,password_hash FROM students WHERE phone=?')
+        .bind(b.phone)
+        .first<{ id: string; password_hash: string }>();
+      if (
+        !u ||
+        !u.password_hash ||
+        !(await verifyPassword(b.password, u.password_hash))
+      )
+        return json({ error: '手机号或密码不正确。' }, 401);
+      const token = crypto.randomUUID() + crypto.randomUUID();
+      await db()
+        .prepare('INSERT INTO sessions(hash,user_id,expires) VALUES(?,?,?)')
+        .bind(await sha(token), u.id, Date.now() + 604800000)
+        .run();
+      (await cookies()).set('academy_session', token, {
+        httpOnly: true,
+        secure: new URL(config().APP_ORIGIN || request.url).protocol === 'https:',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 604800,
+      });
+      return json({ ok: true });
     }
 
     if (op === 'send-code') {

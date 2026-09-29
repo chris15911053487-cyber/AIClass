@@ -865,35 +865,17 @@ function Resources({ data }: { data: Data }) {
     </>
   );
 }
-function Login({ ready }: { ready: boolean }) {
+function Login({ ready: _ready }: { ready: boolean }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
-  const [wait, setWait] = useState(0);
-  useEffect(() => {
-    if (!wait) return;
-    const t = setTimeout(() => setWait((x) => x - 1), 1000);
-    return () => clearTimeout(t);
-  }, [wait]);
-  async function send() {
+  async function submit() {
     setBusy(true);
     setMsg('');
     try {
-      const r = await api('send-code', { phone });
-      setMsg(r.message);
-      setWait(60);
-    } catch (e) {
-      setMsg((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function login() {
-    setBusy(true);
-    setMsg('');
-    try {
-      await api('verify-code', { phone, code });
+      await api(mode, { phone, password });
       location.href = safeReturnTo(
         new URLSearchParams(location.search).get('returnTo') || '/me',
       );
@@ -909,17 +891,34 @@ function Login({ ready }: { ready: boolean }) {
         <span className="eyebrow">WELCOME TO YOUR NEXT STEP</span>
         <h1 style={{ fontSize: 30 }}>开始你的 AI 学习之旅</h1>
         <p className="muted" style={{ fontSize: 14, lineHeight: 1.8 }}>
-          使用手机号登录，首次验证后自动注册。学习进度和作品将保存在你的账号中。
+          使用手机号和密码{mode === 'register' ? '注册账号' : '登录'}。学习进度和作品将保存在你的账号中。
         </p>
-        {!ready && (
-          <div className="notice">
-            短信服务尚未开通，暂时无法注册或登录。公开课程仍可浏览，练习内容暂不能保存。
-          </div>
-        )}
+        <div className="row" style={{ gap: 8, marginBottom: 4 }}>
+          <button
+            type="button"
+            className={mode === 'login' ? 'button small dark' : 'button small'}
+            onClick={() => {
+              setMode('login');
+              setMsg('');
+            }}
+          >
+            登录
+          </button>
+          <button
+            type="button"
+            className={mode === 'register' ? 'button small dark' : 'button small'}
+            onClick={() => {
+              setMode('register');
+              setMsg('');
+            }}
+          >
+            注册
+          </button>
+        </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            login();
+            submit();
           }}
         >
           <label className="field">
@@ -935,35 +934,25 @@ function Login({ ready }: { ready: boolean }) {
             />
           </label>
           <label className="field">
-            短信验证码
-            <div className="row" style={{ flexWrap: 'nowrap' }}>
-              <input
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="6 位验证码"
-              />
-              <button
-                type="button"
-                className="button small"
-                disabled={!ready || busy || wait > 0 || phone.length !== 11}
-                onClick={send}
-              >
-                {wait ? wait + ' 秒后重发' : '获取验证码'}
-              </button>
-            </div>
+            密码
+            <input
+              type="password"
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+              maxLength={64}
+              value={password}
+              placeholder={mode === 'register' ? '设置 6–64 位密码' : '请输入密码'}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </label>
           <button
             className="button dark"
             style={{ width: '100%', marginTop: 10 }}
             disabled={
-              !ready || busy || phone.length !== 11 || code.length !== 6
+              busy || phone.length !== 11 || password.length < 6
             }
             type="submit"
           >
-            {busy ? '正在处理…' : '登录 / 注册'}
+            {busy ? '正在处理…' : mode === 'register' ? '注册' : '登录'}
             <ArrowRight size={17} />
           </button>
         </form>
@@ -971,7 +960,7 @@ function Login({ ready }: { ready: boolean }) {
           className="muted"
           style={{ fontSize: 12, lineHeight: 1.8, marginTop: 16 }}
         >
-          手机号用于身份验证。作业、对话和学习记录仅供本人及教学管理使用。请勿提交敏感工作资料。
+          手机号用于身份识别。请牢记密码，忘记后需联系老师重置。作业、对话和学习记录仅供本人及教学管理使用。请勿提交敏感工作资料。
         </p>
         {msg && (
           <div className="notice" role="status">

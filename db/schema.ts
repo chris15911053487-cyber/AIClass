@@ -18,6 +18,7 @@ export const students = sqliteTable(
     phone: text('phone').notNull(),
     name: text('name').notNull(),
     goal: text('goal').notNull().default(''),
+    passwordHash: text('password_hash').notNull().default(''),
     createdAt: integer('created_at').notNull(),
   },
   (t) => [uniqueIndex('idx_students_phone').on(t.phone)],
